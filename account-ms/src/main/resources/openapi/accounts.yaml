@@ -1,0 +1,200 @@
+openapi: 3.0.3
+info:
+  title: Account API
+  version: "1.0.0"
+  description: >
+    Bank account management:
+    - Create accounts for existing customers
+    - Deposit / Withdraw
+    - Validate if a customer has active accounts (used by CustomerMs before deletion)
+servers:
+  - url: http://localhost:8082
+    description: Local
+
+tags:
+  - name: Accounts
+    description: Endpoints to manage bank accounts
+
+paths:
+  /accounts:
+    get:
+      tags: [Accounts]
+      summary: List accounts
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AccountResponse' }
+
+    post:
+      tags: [Accounts]
+      summary: Create account
+      description: Creates a new bank account for an existing customer.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountResponse' }
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /accounts/{id}:
+    get:
+      tags: [Accounts]
+      summary: Get account by ID
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountResponse' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /accounts/{id}/deposit:
+    post:
+      tags: [Accounts]
+      summary: Deposit into account
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TransactionRequest' }
+      responses:
+        '200':
+          description: Deposit completed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountResponse' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Business rule violation (e.g., account inactive)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /accounts/{id}/withdraw:
+    post:
+      tags: [Accounts]
+      summary: Withdraw from account
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TransactionRequest' }
+      responses:
+        '200':
+          description: Withdrawal completed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountResponse' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Business rule violation (e.g., insufficient funds)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /accounts/active:
+    get:
+      tags: [Accounts]
+      summary: Has active accounts
+      description: Returns true if the customer has ACTIVE accounts.
+      parameters:
+        - in: query
+          name: customerId
+          required: true
+          schema: { type: integer, format: int64 }
+          description: ID of the customer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: boolean }
+        '400':
+          description: Invalid parameter
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+components:
+  parameters:
+    AccountId:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer, format: int64 }
+      description: ID of the account
+
+  schemas:
+    AccountRequest:
+      type: object
+      required: [customerId, type]
+      properties:
+        customerId:
+          type: integer
+          format: int64
+          example: 1
+        type:
+          type: string
+          enum: [SAVINGS, CHECKING]
+          example: SAVINGS
+        initialBalance:
+          type: number
+          format: double
+          example: 100.00
+
+    AccountResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64, example: 1 }
+        customerId: { type: integer, format: int64, example: 1 }
+        status: { type: string, enum: [ACTIVE, INACTIVE], example: ACTIVE }
+        type: { type: string, enum: [SAVINGS, CHECKING], example: SAVINGS }
+        balance: { type: number, format: double, example: 120.50 }
+
+    TransactionRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+          format: double
+          example: 50.00
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Error message description
