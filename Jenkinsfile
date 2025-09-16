@@ -13,7 +13,8 @@ pipeline {
           steps {
             dir('customer-ms') {
               sh 'chmod +x mvnw || true'
-              sh './mvnw -B -ntp clean verify'
+              // 👇 evita conflicto con el 8080 de Jenkins
+              sh './mvnw -B -ntp clean verify -Dserver.port=0'
             }
           }
           post { always { junit 'customer-ms/target/surefire-reports/*.xml' } }
@@ -22,7 +23,8 @@ pipeline {
           steps {
             dir('account-ms') {
               sh 'chmod +x mvnw || true'
-              sh './mvnw -B -ntp clean verify'
+              // 👇 evita conflicto con el 8080 de Jenkins
+              sh './mvnw -B -ntp clean verify -Dserver.port=0'
             }
           }
           post { always { junit 'account-ms/target/surefire-reports/*.xml' } }
@@ -38,7 +40,7 @@ pipeline {
   }
 
   post {
-    success { echo '✅ Build OK' }
-    failure { echo '❌ Build FAILED' }
+    success { echo "✅ Build OK" }
+    failure { echo "❌ Build FAILED" }
   }
 }
