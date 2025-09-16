@@ -1,0 +1,210 @@
+openapi: 3.0.3
+info:
+  title: Customer API
+  version: "1.0.0"
+  description: >
+    Gestión de clientes (CRUD) con validaciones:
+    - DNI único
+    - No permitir eliminar si tiene cuentas activas (regla de negocio)
+servers:
+  - url: http://localhost:8081
+    description: Local
+
+tags:
+  - name: Clientes
+    description: Endpoints para gestionar clientes
+
+paths:
+  /clientes:
+    get:
+      tags: [Clientes]
+      summary: Listar clientes
+      description: Lista todos los clientes.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CustomerResponse' }
+    post:
+      tags: [Clientes]
+      summary: Crear cliente
+      description: Crea un cliente validando unicidad de DNI.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerRequest' }
+      responses:
+        '201':
+          description: Creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerResponse' }
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Conflicto (DNI duplicado)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /clientes/{id}:
+    get:
+      tags: [Clientes]
+      summary: Obtener cliente por ID
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerResponse' }
+        '404':
+          description: No encontrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      tags: [Clientes]
+      summary: Actualizar cliente
+      description: >
+        Actualiza nombre, apellido y email. El DNI puede tratarse como inmutable
+        (recomendado) o permitir cambio con validación de unicidad.
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerRequest' }
+      responses:
+        '200':
+          description: Actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerResponse' }
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: No encontrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Conflicto (DNI duplicado, si se permite cambiar DNI)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Clientes]
+      summary: Eliminar cliente
+      description: >
+        Elimina un cliente. Regla: si tiene cuentas activas, retorna 409.
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      responses:
+        '204':
+          description: Eliminado
+        '404':
+          description: No encontrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Conflicto (cliente con cuentas activas)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+components:
+  parameters:
+    CustomerId:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer, format: int64 }
+      description: ID del cliente
+
+  schemas:
+    CustomerRequest:
+      type: object
+      required: [nombre, apellido, dni, email]
+      properties:
+        nombre:
+          type: string
+          minLength: 1
+          example: Ronal
+        apellido:
+          type: string
+          minLength: 1
+          example: Tenazoa
+        dni:
+          type: string
+          minLength: 8
+          maxLength: 12
+          example: "76543210"
+        email:
+          type: string
+          format: email
+          example: ronal@example.com
+
+    CustomerResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 101
+        nombre:
+          type: string
+          example: Ronal
+        apellido:
+          type: string
+          example: Tenazoa
+        dni:
+          type: string
+          example: "76543210"
+        email:
+          type: string
+          format: email
+          example: ronal@example.com
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Mensaje descriptivo del error
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+# Ejemplos útiles
+x-examples:
+  createRequest:
+    value:
+      nombre: "Ronal"
+      apellido: "Tenazoa"
+      dni: "76543210"
+      email: "ronal@example.com"
+  createResponse:
+    value:
+      id: 101
+      nombre: "Ronal"
+      apellido: "Tenazoa"
+      dni: "76543210"
+      email: "ronal@example.com"
+  error409:
+    value:
+      error: "DNI ya existe"
